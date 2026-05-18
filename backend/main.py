@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import requests
+import json
 
-# FastAPI app
 app = FastAPI()
 
 # Allow frontend connection
@@ -19,15 +20,14 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
 
+
 # Home route
 @app.get("/")
 def home():
     return {"message": "AI Backend Running"}
 
-# Chat route
-from fastapi.responses import StreamingResponse
-import json
 
+# Chat route
 @app.post("/chat")
 async def chat(req: ChatRequest):
 
@@ -35,24 +35,29 @@ async def chat(req: ChatRequest):
 
     def generate():
 
-        response = requests.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": "mistral",
-                "prompt": user_message,
-                "stream": True
-            },
-            stream=True
-        )
+        try:
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": "mistral",
+                    "prompt": user_message,
+                    "stream": True
+                },
+                stream=True,
+                timeout=60
+            )
 
-        for line in response.iter_lines():
+            for line in response.iter_lines():
 
-            if line:
+                if line:
 
-                data = json.loads(line)
+                    data = json.loads(line)
 
-                token = data.get("response", "")
+                    token = data.get("response", "")
 
-                yield token
+                    yield token
+
+        except Exception as e:
+            yield f"Backend Error: {str(e)}"
 
     return StreamingResponse(generate(), media_type="text/plain")
