@@ -1,12 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import requests
+from groq import Groq
 import os
 
 app = FastAPI()
 
-# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,44 +14,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Request model
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
+)
+
 class ChatRequest(BaseModel):
     message: str
 
-# Home route
 @app.get("/")
 def home():
     return {"message": "AI Backend Running"}
 
-# Chat route
 @app.post("/chat")
 async def chat(req: ChatRequest):
 
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    try:
 
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
+        completion = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {
+                    "role": "user",
+                    "content": req.message
+                }
+            ]
+        )
 
-    data = {
-        "model": "llama3-8b-8192",
-        "messages": [
-            {
-                "role": "user",
-                "content": req.message
-            }
-        ]
-    }
+        reply = completion.choices[0].message.content
 
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers=headers,
-        json=data
-    )
+        return reply
 
-    result = response.json()
+    except Exception as e:
 
-    return {
-        "response": result["choices"][0]["message"]["content"]
-    }
+        return f"Backend Error: {str(e)}"
