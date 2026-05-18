@@ -123,8 +123,7 @@ function App() {
         {
           method: "POST",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             message: message,
@@ -132,43 +131,19 @@ function App() {
         }
       );
 
-      const reader =
-        response.body.getReader();
-
-      const decoder = new TextDecoder();
-
-      let aiText = "";
+      const data = await response.json();
 
       updateCurrentChatMessages([
         ...updatedMessages,
         {
           sender: "AI",
-          text: "",
+          text: data.response || "No response from AI",
         },
       ]);
 
-      while (true) {
+    } catch (error) {
 
-        const { done, value } =
-          await reader.read();
-
-        if (done) break;
-
-        const chunk =
-          decoder.decode(value);
-
-        aiText += chunk;
-
-        updateCurrentChatMessages([
-          ...updatedMessages,
-          {
-            sender: "AI",
-            text: aiText,
-          },
-        ]);
-      }
-
-    } catch {
+      console.error(error);
 
       updateCurrentChatMessages([
         ...updatedMessages,
