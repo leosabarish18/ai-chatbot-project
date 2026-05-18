@@ -1,13 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import requests
-import json
+import os
 
 app = FastAPI()
 
-# Allow frontend connection
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,44 +19,40 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
 
-
 # Home route
 @app.get("/")
 def home():
     return {"message": "AI Backend Running"}
 
-
 # Chat route
 @app.post("/chat")
 async def chat(req: ChatRequest):
 
-    user_message = req.message
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-    def generate():
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-        try:
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": "mistral",
-                    "prompt": user_message,
-                    "stream": True
-                },
-                stream=True,
-                timeout=60
-            )
+    data = {
+        "model": "llama3-8b-8192",
+        "messages": [
+            {
+                "role": "user",
+                "content": req.message
+            }
+        ]
+    }
 
-            for line in response.iter_lines():
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers,
+        json=data
+    )
 
-                if line:
+    result = response.json()
 
-                    data = json.loads(line)
-
-                    token = data.get("response", "")
-
-                    yield token
-
-        except Exception as e:
-            yield f"Backend Error: {str(e)}"
-
-    return StreamingResponse(generate(), media_type="text/plain")
+    return {
+        "response": result["choices"][0]["message"]["content"]
+    }

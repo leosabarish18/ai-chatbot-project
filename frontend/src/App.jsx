@@ -7,7 +7,6 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-
 function App() {
 
   const [message, setMessage] = useState("");
@@ -132,14 +131,16 @@ function App() {
         }
       );
 
-      const data = await response.json();
+      const data = await response.text();
+
+      const botMessage = {
+        sender: "AI",
+        text: data,
+      };
 
       updateCurrentChatMessages([
         ...updatedMessages,
-        {
-          sender: "AI",
-          text: data.response || "No response from AI",
-        },
+        botMessage,
       ]);
 
     } catch (error) {
